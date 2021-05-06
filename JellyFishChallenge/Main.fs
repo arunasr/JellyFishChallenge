@@ -118,16 +118,18 @@ module IO =
           then
               yield  Seq.head xs |> parseJellyFish, Seq.tail xs |> Seq.head
               yield! Seq.skip 2 xs |> jfFromStrings
-        }
+    }
 
     /// present lines from TextReader as seq<JF*string>
-    let rec jfFromStream (r:TextReader) = seq {
+    /// memoize stateful sequence so elements can be accessed repeatedly
+    let rec jfFromStream (r:TextReader) = Seq.cache <| seq {
         let s = r.ReadLine()
         if s <> null 
         then 
             yield (s |> parseJellyFish), r.ReadLine()
             yield! jfFromStream r
-    }
+    } 
+
 
     /// run sequence of JF*commands through the given tank
     let rec runAll tank (input:seq<JellyFish*seq<Command>>) = seq {
@@ -158,7 +160,6 @@ module IO =
         else 
             textInput |> jfFromStream               // shape text input into seq<JF*string>
                 |> Seq.map commandMapper            // convert character commands to functions
-                |> Seq.cache                        // memoize stateful sequence
                 |> runAll tank                      // run all JF through the tank
                 |> Seq.iter Console.WriteLine       // print the result
         Console.Read() |> ignore
